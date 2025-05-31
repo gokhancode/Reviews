@@ -14,36 +14,49 @@ interface Business {
 }
 
 interface ReviewFormProps {
-  business: Business | null;
-  onSubmit: (review: { rating: number; comment: string; businessId: string }) => void;
+  business: Business;
+  onSubmit: (review: { rating: number; comment: string; businessId: string }) => Promise<void>;
 }
 
 export const ReviewForm = ({ business, onSubmit }: ReviewFormProps) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!business) {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (rating === 0) {
-      alert('Please select a rating');
+      setError('Please select a rating');
       return;
     }
-    onSubmit({
-      rating,
-      comment,
-      businessId: business.id
-    });
-    setRating(0);
-    setComment('');
+    
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      await onSubmit({
+        rating,
+        comment,
+        businessId: business.id
+      });
+      setRating(0);
+      setComment('');
+    } catch (err) {
+      setError('Failed to submit review. Please try again.');
+      console.error('Error submitting review:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="bg-white rounded-xl p-8 border border-gray-100">
+    <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm">
       <h2 className="text-2xl font-light text-gray-900 mb-6">Write a Review</h2>
       <form onSubmit={handleSubmit} className="space-y-8">
         <div>
@@ -78,11 +91,15 @@ export const ReviewForm = ({ business, onSubmit }: ReviewFormProps) => {
             required
           />
         </div>
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
         <button
           type="submit"
-          className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+          disabled={isSubmitting}
+          className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:hover:bg-gray-900"
         >
-          Submit Review
+          {isSubmitting ? 'Submitting...' : 'Submit Review'}
         </button>
       </form>
     </div>

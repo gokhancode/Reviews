@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Icon } from 'leaflet';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 // Fix for default marker icons in Leaflet with Next.js
 const icon = new Icon({
@@ -24,7 +24,7 @@ interface Business {
   reviewCount: number;
   type: string;
   address: string;
-  placeId?: string; // Google Places ID for future integration
+  placeId?: string;
 }
 
 interface BusinessMapProps {
@@ -43,112 +43,26 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [center, setCenter] = useState<[number, number]>([50.0755, 14.4378]);
   const [isSearching, setIsSearching] = useState(false);
-
-  // Mock data for different cities
-  const mockBusinesses: Record<string, Business[]> = {
-    'prague': [
-      {
-        id: '1',
-        name: 'U Fleků',
-        location: [50.0755, 14.4378],
-        rating: 4.5,
-        reviewCount: 120,
-        type: 'Restaurant',
-        address: 'Křemencova 11, Prague'
-      },
-      {
-        id: '2',
-        name: 'Café Louvre',
-        location: [50.0815, 14.4278],
-        rating: 4.3,
-        reviewCount: 85,
-        type: 'Cafe',
-        address: 'Národní 22, Prague'
-      }
-    ],
-    'london': [
-      {
-        id: '3',
-        name: 'The Ivy',
-        location: [51.5074, -0.1278],
-        rating: 4.7,
-        reviewCount: 250,
-        type: 'Restaurant',
-        address: '1-5 West Street, London'
-      },
-      {
-        id: '4',
-        name: 'Monmouth Coffee',
-        location: [51.5072, -0.1275],
-        rating: 4.6,
-        reviewCount: 180,
-        type: 'Cafe',
-        address: '27 Monmouth Street, London'
-      }
-    ],
-    'new york': [
-      {
-        id: '5',
-        name: 'Shake Shack',
-        location: [40.7419, -73.9893],
-        rating: 4.4,
-        reviewCount: 320,
-        type: 'Restaurant',
-        address: 'Madison Square Park, New York'
-      },
-      {
-        id: '6',
-        name: 'Blue Bottle Coffee',
-        location: [40.7420, -73.9894],
-        rating: 4.5,
-        reviewCount: 150,
-        type: 'Cafe',
-        address: '1 Rockefeller Plaza, New York'
-      }
-    ]
-  };
-
-  // City coordinates
-  const cityCoordinates: Record<string, [number, number]> = {
-    'prague': [50.0755, 14.4378],
-    'london': [51.5074, -0.1278],
-    'new york': [40.7128, -74.0060]
-  };
+  const mapRef = useRef<any>(null);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
     setIsSearching(true);
     try {
-      // Convert search query to lowercase for case-insensitive matching
-      const query = searchQuery.toLowerCase();
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const data = await response.json();
       
-      // Find matching city
-      const matchingCity = Object.keys(mockBusinesses).find(city => 
-        city.toLowerCase().includes(query)
-      );
+      if (data.error) {
+        console.error('Search error:', data.error);
+        return;
+      }
 
-      if (matchingCity) {
-        // Update map center to the city
-        setCenter(cityCoordinates[matchingCity]);
-        // Set businesses for that city
-        setBusinesses(mockBusinesses[matchingCity]);
+      if (data.length > 0) {
+        setBusinesses(data);
+        setCenter(data[0].location);
       } else {
-        // If no city match, search in business names
-        const allBusinesses = Object.values(mockBusinesses).flat();
-        const matchingBusinesses = allBusinesses.filter(business =>
-          business.name.toLowerCase().includes(query) ||
-          business.type.toLowerCase().includes(query)
-        );
-        
-        if (matchingBusinesses.length > 0) {
-          setBusinesses(matchingBusinesses);
-          // Center map on the first matching business
-          setCenter(matchingBusinesses[0].location);
-        } else {
-          // No results found
-          setBusinesses([]);
-        }
+        setBusinesses([]);
       }
     } catch (error) {
       console.error('Error searching businesses:', error);
@@ -158,7 +72,8 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
     }
   };
 
-  const handleBusinessSelect = (business: Business) => {
+  const handleBusinessSelect = (business: Business, closePopup: () => void) => {
+    closePopup();
     onBusinessSelect(business);
   };
 
@@ -167,7 +82,7 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
       <div className="absolute top-4 left-4 right-4 z-[1000] flex gap-2">
         <input
           type="text"
-          placeholder="Search for businesses or cities..."
+          placeholder="Search for businesses or locations..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -187,6 +102,7 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
           zoom={14}
           style={{ height: '100%', width: '100%' }}
           className="rounded-xl"
+          ref={mapRef}
         >
           <ChangeView center={center} />
           <TileLayer
@@ -212,14 +128,22 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex items-center">
                       <span className="text-yellow-400 mr-1">★</span>
-                      <span className="font-medium text-gray-900">{business.rating}</span>
+                      <span className="font-medium text-gray-900">{business.rating.toFixed(1)}</span>
                     </div>
                     <span className="text-gray-300">•</span>
                     <span className="text-sm text-gray-500">{business.reviewCount} reviews</span>
                   </div>
 
                   <button
-                    onClick={() => handleBusinessSelect(business)}
+                    onClick={() => handleBusinessSelect(business, () => {
+                      const popup = document.querySelector('.leaflet-popup');
+                      if (popup) {
+                        const closeButton = popup.querySelector('.leaflet-popup-close-button');
+                        if (closeButton instanceof HTMLElement) {
+                          closeButton.click();
+                        }
+                      }
+                    })}
                     className="w-full bg-gray-900 text-white px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                   >
                     <span>Write a Review</span>

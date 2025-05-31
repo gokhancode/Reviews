@@ -29,43 +29,67 @@ interface Review {
 
 export default function Home() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [businessReviews, setBusinessReviews] = useState<Review[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
 
   useEffect(() => {
-    // Load reviews from localStorage on component mount
-    const storedReviews = localStorage.getItem('businessReviews');
-    if (storedReviews) {
-      setReviews(JSON.parse(storedReviews));
+    if (selectedBusiness) {
+      fetchReviews(selectedBusiness.id);
     }
-  }, []);
+  }, [selectedBusiness]);
+
+  const fetchReviews = async (businessId: string) => {
+    setIsLoadingReviews(true);
+    try {
+      const response = await fetch(`/api/reviews?businessId=${businessId}`);
+      const data = await response.json();
+      setBusinessReviews(data);
+
+      // Calculate average rating and update business
+      if (data.length > 0) {
+        const avgRating = data.reduce((acc: number, review: Review) => acc + review.rating, 0) / data.length;
+        setSelectedBusiness(prev => prev ? {
+          ...prev,
+          rating: avgRating,
+          reviewCount: data.length
+        } : null);
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setIsLoadingReviews(false);
+    }
+  };
 
   const handleBusinessSelect = (business: Business) => {
     setSelectedBusiness(business);
   };
 
-  const handleReviewSubmit = (reviewData: { rating: number; comment: string; businessId: string }) => {
-    const newReview: Review = {
-      id: Date.now().toString(),
-      ...reviewData,
-      userId: 'user-' + Date.now(), // Temporary user ID
-      username: 'Anonymous', // Temporary username
-      createdAt: new Date().toISOString()
-    };
+  const handleReviewSubmit = async (reviewData: { rating: number; comment: string; businessId: string }) => {
+    try {
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...reviewData,
+          userId: 'user123', // Replace with actual user ID
+          username: 'Anonymous User' // Replace with actual username
+        }),
+      });
 
-    const updatedReviews = [...reviews, newReview];
-    setReviews(updatedReviews);
-    
-    // Save to localStorage
-    localStorage.setItem('businessReviews', JSON.stringify(updatedReviews));
-    
-    // Reset selected business
-    setSelectedBusiness(null);
+      if (!response.ok) {
+        throw new Error('Failed to submit review');
+      }
+
+      // Refresh reviews after submission
+      await fetchReviews(reviewData.businessId);
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      throw error;
+    }
   };
-
-  // Filter reviews for the selected business
-  const businessReviews = selectedBusiness
-    ? reviews.filter(review => review.businessId === selectedBusiness.id)
-    : [];
 
   return (
     <Page>
@@ -75,22 +99,22 @@ export default function Home() {
           <UserInfo />
         </div>
       </Page.Header>
-      <Page.Main className="bg-white">
-        <div className="max-w-7xl mx-auto">
+      <Page.Main className="bg-gray-50">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="space-y-8">
-            <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100">
+            <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white">
               <BusinessMap onBusinessSelect={handleBusinessSelect} />
             </div>
             
             {selectedBusiness && (
               <div className="space-y-8">
-                <div className="bg-white rounded-xl p-8 border border-gray-100">
+                <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm">
                   <h2 className="text-3xl font-light text-gray-900 mb-3">{selectedBusiness.name}</h2>
                   <p className="text-gray-500 mb-1">{selectedBusiness.type}</p>
                   <p className="text-gray-400 text-sm mb-6">{selectedBusiness.address}</p>
                   <div className="flex items-center gap-2">
                     <span className="text-yellow-400 text-xl">★</span>
-                    <span className="font-medium text-gray-900">{selectedBusiness.rating}</span>
+                    <span className="font-medium text-gray-900">{selectedBusiness.rating.toFixed(1)}</span>
                     <span className="text-gray-400">({selectedBusiness.reviewCount} reviews)</span>
                   </div>
                 </div>
@@ -100,8 +124,12 @@ export default function Home() {
                   onSubmit={handleReviewSubmit}
                 />
 
-                {businessReviews.length > 0 && (
-                  <div className="bg-white rounded-xl p-8 border border-gray-100">
+                {isLoadingReviews ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                  </div>
+                ) : businessReviews.length > 0 ? (
+                  <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm">
                     <h2 className="text-2xl font-light text-gray-900 mb-6">Reviews</h2>
                     <div className="space-y-8">
                       {businessReviews.map((review) => (
@@ -117,6 +145,10 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm text-center text-gray-500">
+                    No reviews yet. Be the first to review this place!
                   </div>
                 )}
               </div>
