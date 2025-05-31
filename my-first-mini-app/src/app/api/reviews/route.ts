@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { verifyCloudProof } from '@worldcoin/minikit-js';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { rating, comment, businessId, userId, username } = body;
+    const { rating, comment, businessId, userId, username, worldIdProof } = body;
+
+    // Require World ID proof
+    if (!worldIdProof) {
+      return NextResponse.json(
+        { error: 'World ID verification required.' },
+        { status: 401 }
+      );
+    }
 
     // Validate required fields
     if (!rating || !comment || !businessId || !userId || !username) {
@@ -31,6 +40,35 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verify World ID proof
+    const app_id = process.env.NEXT_PUBLIC_APP_ID as `app_${string}`;
+    const action = 'leave-review';
+    const verifyRes = await verifyCloudProof(
+      worldIdProof,
+      app_id,
+      action,
+      undefined
+    );
+    if (!verifyRes.success) {
+      return NextResponse.json(
+        { error: 'World ID verification failed.' },
+        { status: 403 }
+      );
+    }
+
+    // Optionally, prevent double submissions by nullifier hash
+    const nullifierHash = worldIdProof.nullifier_hash;
+    const existing = await prisma.review.findFirst({
+      where: { userId, businessId },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'You have already reviewed this business' },
+        { status: 409 }
+      );
+    }
+
+    // Save the review
     const review = await prisma.review.create({
       data: {
         rating,
@@ -38,13 +76,14 @@ export async function POST(request: Request) {
         businessId,
         userId,
         username,
+        // Optionally, store nullifierHash for audit
+        // nullifierHash,
       },
     });
 
     return NextResponse.json(review);
   } catch (error) {
     console.error('Error creating review:', error);
-    
     if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         return NextResponse.json(
@@ -53,7 +92,6 @@ export async function POST(request: Request) {
         );
       }
     }
-
     return NextResponse.json(
       { error: 'Failed to create review' },
       { status: 500 }
