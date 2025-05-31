@@ -14,7 +14,7 @@ interface Business {
 }
 
 export const ReviewFormWrapper = () => {
-  const handleSubmit = (reviewData: { rating: number; comment: string; businessId: string }) => {
+  const handleSubmit = async (reviewData: { rating: number; comment: string; businessId: string }) => {
     console.log('New review:', reviewData);
     // TODO: Submit review to backend
   };
