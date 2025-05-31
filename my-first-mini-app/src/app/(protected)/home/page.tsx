@@ -92,23 +92,14 @@ export default function Home() {
   };
 
   return (
-    <Page>
-      <Page.Header className="bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-light tracking-tight text-gray-900">Reviews</h1>
-          <UserInfo />
-        </div>
-      </Page.Header>
-      <Page.Main className="bg-gray-50">
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <div className="space-y-8">
-            <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white">
-              <BusinessMap onBusinessSelect={handleBusinessSelect} />
-            </div>
-            
-            {selectedBusiness && (
-              <div className="space-y-8">
-                <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm">
+    <Page className="!p-0">
+      <Page.Main className="!p-0">
+        <div className="fixed inset-0 h-dvh w-screen bg-white pb-safe">
+          <BusinessMap onBusinessSelect={handleBusinessSelect} />
+          {selectedBusiness && (
+            <div className="absolute top-4 right-4 w-96 max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white rounded-xl shadow-lg">
+              <div className="p-6 space-y-6">
+                <div>
                   <h2 className="text-3xl font-light text-gray-900 mb-3">{selectedBusiness.name}</h2>
                   <p className="text-gray-500 mb-1">{selectedBusiness.type}</p>
                   <p className="text-gray-400 text-sm mb-6">{selectedBusiness.address}</p>
@@ -129,11 +120,11 @@ export default function Home() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
                   </div>
                 ) : businessReviews.length > 0 ? (
-                  <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm">
+                  <div>
                     <h2 className="text-2xl font-light text-gray-900 mb-6">Reviews</h2>
-                    <div className="space-y-8">
+                    <div className="space-y-6">
                       {businessReviews.map((review) => (
-                        <div key={review.id} className="border-b border-gray-50 pb-8 last:border-b-0 last:pb-0">
+                        <div key={review.id} className="border-b border-gray-50 pb-6 last:border-b-0 last:pb-0">
                           <div className="flex items-center justify-between mb-3">
                             <span className="font-medium text-gray-900">{review.username}</span>
                             <span className="text-yellow-400">★ {review.rating}</span>
@@ -147,13 +138,13 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm text-center text-gray-500">
+                  <div className="text-center text-gray-500">
                     No reviews yet. Be the first to review this place!
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Page.Main>
     </Page>

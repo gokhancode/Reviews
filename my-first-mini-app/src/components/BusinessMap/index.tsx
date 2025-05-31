@@ -81,8 +81,8 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
   };
 
   return (
-    <div className="relative">
-      <div className="absolute top-4 left-4 right-4 z-[1000] flex gap-2">
+    <div className="relative h-full w-full">
+      <div className="absolute top-4 left-4 ml-16 z-[1000] flex gap-2 max-w-md w-full">
         <input
           type="text"
           placeholder="Search for businesses or locations..."
@@ -99,7 +99,7 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
           {isSearching ? 'Searching...' : 'Search'}
         </button>
       </div>
-      <div className="h-[500px] w-full">
+      <div className="h-full w-full">
         <MapContainer
           center={center}
           zoom={14}

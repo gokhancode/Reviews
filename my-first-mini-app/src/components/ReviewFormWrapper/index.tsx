@@ -14,10 +14,11 @@ interface Business {
   placeId?: string;
 }
 
-export const ReviewFormWrapper = () => {
-  const params = useParams();
-  const businessId = params.id as string;
+interface ReviewFormWrapperProps {
+  businessId: string;
+}
 
+export const ReviewFormWrapper = ({ businessId }: ReviewFormWrapperProps) => {
   const handleSubmit = async (reviewData: { rating: number; comment: string; businessId: string }) => {
     const completeReviewData = {
       ...reviewData,
