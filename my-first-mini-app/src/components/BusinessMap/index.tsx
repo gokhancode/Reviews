@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Icon } from 'leaflet';
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Fix for default marker icons in Leaflet with Next.js
 const icon = new Icon({
@@ -39,6 +40,7 @@ function ChangeView({ center }: { center: [number, number] }) {
 }
 
 export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
+  const router = useRouter();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [center, setCenter] = useState<[number, number]>([50.0755, 14.4378]);
@@ -75,6 +77,7 @@ export const BusinessMap = ({ onBusinessSelect }: BusinessMapProps) => {
   const handleBusinessSelect = (business: Business, closePopup: () => void) => {
     closePopup();
     onBusinessSelect(business);
+    router.push(`/business/${business.id}`);
   };
 
   return (

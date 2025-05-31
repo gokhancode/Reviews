@@ -29,10 +29,16 @@ export const ReviewForm = ({ business, onSubmit }: ReviewFormProps) => {
     return null;
   }
 
+  const isFormValid = rating > 0 && comment.trim().length >= 10;
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (rating === 0) {
-      setError('Please select a rating');
+    if (!isFormValid) {
+      if (rating === 0) {
+        setError('Please select a rating');
+      } else if (comment.trim().length < 10) {
+        setError('Please write at least 10 characters');
+      }
       return;
     }
     
@@ -68,7 +74,9 @@ export const ReviewForm = ({ business, onSubmit }: ReviewFormProps) => {
               <button
                 key={star}
                 type="button"
-                className="text-4xl focus:outline-none transition-transform hover:scale-110 text-gray-200 hover:text-yellow-400"
+                className={`text-4xl focus:outline-none transition-transform hover:scale-110 ${
+                  star <= (hoveredRating || rating) ? 'text-yellow-400' : 'text-gray-200'
+                }`}
                 onClick={() => setRating(star)}
                 onMouseEnter={() => setHoveredRating(star)}
                 onMouseLeave={() => setHoveredRating(0)}
@@ -89,6 +97,7 @@ export const ReviewForm = ({ business, onSubmit }: ReviewFormProps) => {
             rows={4}
             placeholder="Share your experience..."
             required
+            minLength={10}
           />
         </div>
         {error && (
@@ -96,8 +105,12 @@ export const ReviewForm = ({ business, onSubmit }: ReviewFormProps) => {
         )}
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:hover:bg-gray-900"
+          disabled={isSubmitting || !isFormValid}
+          className={`w-full px-6 py-3 rounded-lg font-medium transition-colors ${
+            isSubmitting || !isFormValid
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-900 text-white hover:bg-gray-800'
+          }`}
         >
           {isSubmitting ? 'Submitting...' : 'Submit Review'}
         </button>
